@@ -68,6 +68,7 @@ export default function Home() {
               { label: "Features", link: "/#features", ariaLabel: "View Features" },
               { label: "Pricing", link: "/#pricing", ariaLabel: "View Pricing" },
               { label: "Contact", link: "/#contact", ariaLabel: "Contact us" },
+              { label: "Login", link: "/login", ariaLabel: "Login to your account" },
             ]}
             socialItems={[
               { label: "LinkedIn", link: "https://linkedin.com" },

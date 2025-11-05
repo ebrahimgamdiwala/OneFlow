@@ -121,7 +121,9 @@ export default function LiquidEther({
         this.coords_old = new THREE.Vector2();
         this.diff = new THREE.Vector2();
         this.timer = null;
-        this.container = null;
+  this.container = null;
+  // the actual DOM element that has the event listeners attached
+  this._listenerTarget = null;
         this._onMouseMove = this.onDocumentMouseMove.bind(this);
         this._onTouchStart = this.onDocumentTouchStart.bind(this);
         this._onTouchMove = this.onDocumentTouchMove.bind(this);
@@ -140,22 +142,27 @@ export default function LiquidEther({
         this.onInteract = null;
       }
       init(container) {
+        // store both the element we listen on and the element we use for rect calculations
+        this._listenerTarget = container;
+        // by default, the visual container used for rects is the same as the listener
         this.container = container;
-        container.addEventListener('mousemove', this._onMouseMove, false);
-        container.addEventListener('touchstart', this._onTouchStart, false);
-        container.addEventListener('touchmove', this._onTouchMove, false);
-        container.addEventListener('mouseenter', this._onMouseEnter, false);
-        container.addEventListener('mouseleave', this._onMouseLeave, false);
-        container.addEventListener('touchend', this._onTouchEnd, false);
+        this._listenerTarget.addEventListener('mousemove', this._onMouseMove, false);
+        this._listenerTarget.addEventListener('touchstart', this._onTouchStart, false);
+        this._listenerTarget.addEventListener('touchmove', this._onTouchMove, false);
+        this._listenerTarget.addEventListener('mouseenter', this._onMouseEnter, false);
+        this._listenerTarget.addEventListener('mouseleave', this._onMouseLeave, false);
+        this._listenerTarget.addEventListener('touchend', this._onTouchEnd, false);
       }
       dispose() {
-        if (!this.container) return;
-        this.container.removeEventListener('mousemove', this._onMouseMove, false);
-        this.container.removeEventListener('touchstart', this._onTouchStart, false);
-        this.container.removeEventListener('touchmove', this._onTouchMove, false);
-        this.container.removeEventListener('mouseenter', this._onMouseEnter, false);
-        this.container.removeEventListener('mouseleave', this._onMouseLeave, false);
-        this.container.removeEventListener('touchend', this._onTouchEnd, false);
+        // remove listeners from the original listener target
+        if (this._listenerTarget) {
+          this._listenerTarget.removeEventListener('mousemove', this._onMouseMove, false);
+          this._listenerTarget.removeEventListener('touchstart', this._onTouchStart, false);
+          this._listenerTarget.removeEventListener('touchmove', this._onTouchMove, false);
+          this._listenerTarget.removeEventListener('mouseenter', this._onMouseEnter, false);
+          this._listenerTarget.removeEventListener('mouseleave', this._onMouseLeave, false);
+          this._listenerTarget.removeEventListener('touchend', this._onTouchEnd, false);
+        }
       }
       setCoords(x, y) {
         if (!this.container) return;
@@ -903,8 +910,12 @@ export default function LiquidEther({
         this.props = props;
         Common.init(props.$wrapper);
         // Choose the element to listen on for pointer/mouse/touch events
-        const listenTarget = props.inputTarget === 'document' ? document.documentElement : props.$wrapper;
-        Mouse.init(listenTarget);
+  const listenTarget = props.inputTarget === 'document' ? document.documentElement : props.$wrapper;
+  // attach events to the chosen listenTarget (document or the wrapper),
+  // but use the actual visual wrapper for bounding rect calculations
+  Mouse.init(listenTarget);
+  // ensure coords are computed against the visual wrapper (renderer is prepended into $wrapper)
+  Mouse.container = props.$wrapper;
         Mouse.autoIntensity = props.autoIntensity;
         Mouse.takeoverDuration = props.takeoverDuration;
         this.lastUserInteraction = performance.now();
