@@ -127,14 +127,48 @@ const ModelInner = ({
     outer.current.rotation.set(initPitch, initYaw, 0);
 
     if (autoFrame && camera.isPerspectiveCamera && !initialCameraSet.current) {
-      const persp = camera;
-      const fitR = sphere.radius * s;
-      const d = (fitR * 1.2) / Math.sin((persp.fov * Math.PI) / 180 / 2);
-      persp.position.set(pivotW.current.x, pivotW.current.y, pivotW.current.z + d);
-      persp.near = d / 10;
-      persp.far = d * 10;
-      persp.updateProjectionMatrix();
-      initialCameraSet.current = true;
+      // compute a robust fit that accounts for canvas size and aspect ratio.
+      const computeAndSetCamera = (attempt = 0) => {
+        const MAX_ATTEMPTS = 6;
+        const persp = camera;
+        // prefer clientWidth/clientHeight from the canvas; fall back to drawing buffer
+        const canvas = gl.domElement;
+        const rect = canvas?.getBoundingClientRect?.() || {};
+        const cw = rect.width || canvas?.clientWidth || canvas?.width || window.innerWidth;
+        const ch = rect.height || canvas?.clientHeight || canvas?.height || window.innerHeight;
+        const aspect = (cw && ch) ? cw / ch : persp.aspect || 1;
+
+        // radius after model scale (include gentle padding)
+        const fitR = sphere.radius * s * 1.2;
+
+        // vertical fov in radians
+        const vFov = (persp.fov * Math.PI) / 180;
+
+        // required distance to fit sphere in vertical FOV (preserves previous visual size)
+        const d = fitR / Math.sin(vFov / 2);
+
+        // If measurements look suspiciously small (layout not finished), retry a few frames
+        if ((cw < 50 || ch < 50) && attempt < MAX_ATTEMPTS) {
+          requestAnimationFrame(() => computeAndSetCamera(attempt + 1));
+          return;
+        }
+
+        // place camera along Z axis relative to pivot
+        persp.position.set(pivotW.current.x, pivotW.current.y, pivotW.current.z + d);
+        persp.near = Math.max(0.001, d / 100);
+        persp.far = d * 100;
+        persp.aspect = aspect;
+        persp.updateProjectionMatrix();
+
+        // As a safety, schedule one more adjustment a frame later in case layout refined
+        if (attempt === 0 && initialCameraSet.current === false) {
+          requestAnimationFrame(() => computeAndSetCamera(1));
+        }
+
+        initialCameraSet.current = true;
+      };
+
+      computeAndSetCamera();
     }
 
     if (fadeIn) {
