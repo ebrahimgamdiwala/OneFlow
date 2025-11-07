@@ -220,14 +220,16 @@ export default function Dashboard() {
 
         {/* Main Charts */}
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="bg-muted/50 backdrop-blur-sm">
-            <TabsTrigger value="overview" className="ivy-font">Overview</TabsTrigger>
-            <TabsTrigger value="analytics" className="ivy-font">Analytics</TabsTrigger>
-            <TabsTrigger value="performance" className="ivy-font">Performance</TabsTrigger>
-            <TabsTrigger value="cashflow" className="ivy-font">Cash Flow</TabsTrigger>
-            <TabsTrigger value="investments" className="ivy-font">Investments</TabsTrigger>
-            <TabsTrigger value="transactions" className="ivy-font">Transactions</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-2 px-2 pb-2">
+            <TabsList className="bg-muted/50 backdrop-blur-sm inline-flex w-auto min-w-full md:w-full">
+              <TabsTrigger value="overview" className="ivy-font whitespace-nowrap flex-1 md:flex-none">Overview</TabsTrigger>
+              <TabsTrigger value="analytics" className="ivy-font whitespace-nowrap flex-1 md:flex-none">Analytics</TabsTrigger>
+              <TabsTrigger value="performance" className="ivy-font whitespace-nowrap flex-1 md:flex-none">Performance</TabsTrigger>
+              <TabsTrigger value="cashflow" className="ivy-font whitespace-nowrap flex-1 md:flex-none">Cash Flow</TabsTrigger>
+              <TabsTrigger value="investments" className="ivy-font whitespace-nowrap flex-1 md:flex-none">Investments</TabsTrigger>
+              <TabsTrigger value="transactions" className="ivy-font whitespace-nowrap flex-1 md:flex-none">Transactions</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-4">
