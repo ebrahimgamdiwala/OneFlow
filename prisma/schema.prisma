@@ -63,7 +63,7 @@ model User {
   id         String    @id @default(uuid())
   email      String    @unique
   name       String?
-  role       Role      @default(TEAM_MEMBER)
+  role       Role?     // Nullable - new OAuth users won't have a role until they select one
   password   String?
   emailVerified DateTime?
   image      String?

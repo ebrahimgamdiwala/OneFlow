@@ -146,8 +146,10 @@ export default function LoginPage() {
     setIsLoading(true);
     setError("");
     try {
-      // OAuth users will be redirected to role-setup if they're new
-      await signIn("google", { callbackUrl: "/auth/role-setup" });
+      // For OAuth, NextAuth will automatically redirect:
+      // - New users (no role) -> /auth/role-setup (via pages.newUser)
+      // - Existing users (with role) -> /dashboard (default callback)
+      await signIn("google", { callbackUrl: "/dashboard" });
     } catch (error) {
       console.error("Google sign in error:", error);
       setError("Failed to sign in with Google");

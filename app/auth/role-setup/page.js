@@ -14,11 +14,12 @@ export default function RoleSetupPage() {
     if (status === "unauthenticated") {
       router.push("/login");
     } else if (status === "authenticated") {
-      // Check if user has a role set
-      if (!session?.user?.role || session.user.role === "TEAM_MEMBER") {
+      // Only show modal for users who don't have a role set yet (new OAuth users)
+      // Don't show for existing users with TEAM_MEMBER role
+      if (!session?.user?.role) {
         setShowModal(true);
       } else {
-        // User already has a role, redirect to dashboard
+        // User already has a role (including TEAM_MEMBER), redirect to dashboard
         router.push("/dashboard");
       }
     }
