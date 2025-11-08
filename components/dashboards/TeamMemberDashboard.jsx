@@ -31,10 +31,6 @@ export default function TeamMemberDashboard({ user }) {
   const [recentTimesheets, setRecentTimesheets] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
-
   const fetchDashboardData = useCallback(async () => {
     try {
       // Fetch my tasks
@@ -72,6 +68,10 @@ export default function TeamMemberDashboard({ user }) {
       setLoading(false);
     }
   }, [user.id]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const getStatusColor = (status) => {
     switch (status) {
