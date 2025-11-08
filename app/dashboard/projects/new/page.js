@@ -1,0 +1,349 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
+
+export default function NewProjectPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [selectedMembers, setSelectedMembers] = useState([]);
+
+  const [formData, setFormData] = useState({
+    name: "",
+    code: "",
+    description: "",
+    managerId: "",
+    status: "PLANNED",
+    startDate: "",
+    endDate: "",
+    budget: "",
+  });
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [status, router]);
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchUsers();
+      // Set current user as default manager if they're a project manager
+      if (session?.user?.role === "PROJECT_MANAGER") {
+        setFormData((prev) => ({ ...prev, managerId: session.user.id }));
+      }
+    }
+  }, [status, session]);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch("/api/users");
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data);
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name, value) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.name) {
+      alert("Project name is required");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/projects", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...formData,
+          memberIds: selectedMembers,
+        }),
+      });
+
+      if (response.ok) {
+        const project = await response.json();
+        router.push(`/dashboard/projects/${project.id}`);
+      } else {
+        const error = await response.json();
+        alert(error.error || "Failed to create project");
+      }
+    } catch (error) {
+      console.error("Error creating project:", error);
+      alert("Failed to create project");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMemberToggle = (userId) => {
+    setSelectedMembers((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  if (status === "loading") {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto p-6 max-w-4xl">
+      <div className="flex items-center gap-4 mb-6">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.push("/dashboard/projects")}
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold">Create New Project</h1>
+          <p className="text-muted-foreground">
+            Set up a new project and assign team members
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit}>
+        <div className="space-y-6">
+          {/* Basic Information */}
+          <Card className="border-border/40">
+            <CardHeader>
+              <CardTitle>Basic Information</CardTitle>
+              <CardDescription>
+                Enter the basic details of your project
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="name">
+                    Project Name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="Enter project name"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="code">Project Code</Label>
+                  <Input
+                    id="code"
+                    name="code"
+                    value={formData.code}
+                    onChange={handleChange}
+                    placeholder="e.g., PROJ-001"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  placeholder="Enter project description"
+                  rows={4}
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) => handleSelectChange("status", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PLANNED">Planned</SelectItem>
+                      <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                      <SelectItem value="ON_HOLD">On Hold</SelectItem>
+                      <SelectItem value="COMPLETED">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="managerId">Project Manager</Label>
+                  <Select
+                    value={formData.managerId}
+                    onValueChange={(value) => handleSelectChange("managerId", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select manager" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users
+                        .filter((u) => u.role === "PROJECT_MANAGER" || u.role === "ADMIN")
+                        .map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.name} ({user.email})
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Timeline & Budget */}
+          <Card className="border-border/40">
+            <CardHeader>
+              <CardTitle>Timeline & Budget</CardTitle>
+              <CardDescription>
+                Set project timeline and budget constraints
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="startDate">Start Date</Label>
+                  <Input
+                    id="startDate"
+                    name="startDate"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="endDate">End Date</Label>
+                  <Input
+                    id="endDate"
+                    name="endDate"
+                    type="date"
+                    value={formData.endDate}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="budget">Budget (₹)</Label>
+                <Input
+                  id="budget"
+                  name="budget"
+                  type="number"
+                  step="0.01"
+                  value={formData.budget}
+                  onChange={handleChange}
+                  placeholder="Enter project budget"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Team Members */}
+          <Card className="border-border/40">
+            <CardHeader>
+              <CardTitle>Team Members</CardTitle>
+              <CardDescription>
+                Select team members to assign to this project
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {users
+                  .filter((u) => u.role === "TEAM_MEMBER" || u.role === "PROJECT_MANAGER")
+                  .map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center gap-3 p-3 rounded-lg border border-border/40 hover:bg-muted/50 cursor-pointer"
+                      onClick={() => handleMemberToggle(user.id)}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedMembers.includes(user.id)}
+                        onChange={() => handleMemberToggle(user.id)}
+                        className="h-4 w-4"
+                      />
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{user.name}</p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground">{user.role}</span>
+                    </div>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push("/dashboard/projects")}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading} className="gap-2">
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  Create Project
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}

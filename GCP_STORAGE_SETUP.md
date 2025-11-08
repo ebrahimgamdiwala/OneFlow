@@ -1,6 +1,23 @@
 # Google Cloud Storage Setup Guide for OneFlow
 
-This guide will help you set up Google Cloud Storage for storing user profile images and other files in OneFlow.
+This guide will help you set up Google Cloud Storage for storing user profile images, task cover images, and other files in OneFlow.
+
+## Quick Start (For Development)
+
+**Don't have GCP set up yet?** The app will still work! Image uploads will show an error, but you can:
+1. Use direct image URLs instead (paste image URL in the cover field)
+2. Set up GCP later following the full guide below
+
+**To enable GCP uploads:**
+1. Create a GCP project and bucket (see full guide below)
+2. Download service account JSON key
+3. Add to `.env`:
+   ```env
+   GCP_PROJECT_ID="your-project-id"
+   GCP_BUCKET_NAME="oneflow-storage"
+   GCP_SERVICE_ACCOUNT_KEY='{"type":"service_account",...}'
+   ```
+4. Restart your dev server
 
 ## Prerequisites
 
@@ -134,12 +151,16 @@ oneflow-storage/
 │   ├── {userId}/
 │   │   ├── uuid-1.jpg
 │   │   └── uuid-2.png
+├── task-covers/
+│   └── {userId}/
+│       ├── uuid-3.jpg
+│       └── uuid-4.png
 ├── documents/
 │   └── {userId}/
-│       └── uuid-3.pdf
+│       └── uuid-5.pdf
 └── attachments/
     └── {userId}/
-        └── uuid-4.doc
+        └── uuid-6.doc
 ```
 
 ## Cost Estimation

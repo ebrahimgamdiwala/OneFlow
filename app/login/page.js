@@ -65,11 +65,15 @@ export default function LoginPage() {
         });
 
         if (result?.error) {
-          setError("Invalid email or password");
-        } else {
+          setError(result.error || "Invalid email or password");
+          setIsLoading(false);
+        } else if (result?.ok) {
           // Redirect to dashboard on success
           router.push("/dashboard");
           router.refresh();
+        } else {
+          setError("Login failed. Please try again.");
+          setIsLoading(false);
         }
       } else {
         // Sign up
@@ -96,29 +100,43 @@ export default function LoginPage() {
           }),
         });
 
+        if (!response.ok) {
+          let errorMessage = "Failed to create account";
+          try {
+            const data = await response.json();
+            errorMessage = data.error || errorMessage;
+          } catch (e) {
+            // Response is not JSON
+            errorMessage = `Server error: ${response.status}`;
+          }
+          setError(errorMessage);
+          setIsLoading(false);
+          return;
+        }
+
         const data = await response.json();
 
-        if (response.ok) {
-          // Auto login after signup
-          const result = await signIn("credentials", {
-            redirect: false,
-            email: formData.email,
-            password: formData.password,
-          });
+        // Auto login after signup
+        const result = await signIn("credentials", {
+          redirect: false,
+          email: formData.email,
+          password: formData.password,
+        });
 
-          if (result?.error) {
-            setError("Account created but login failed. Please try logging in.");
-          } else {
-            router.push("/dashboard");
-            router.refresh();
-          }
+        if (result?.error) {
+          setError("Account created but login failed. Please try logging in manually.");
+          setIsLoading(false);
+        } else if (result?.ok) {
+          router.push("/dashboard");
+          router.refresh();
         } else {
-          setError(data.error || "Failed to create account");
+          setError("Account created but login failed. Please try logging in.");
+          setIsLoading(false);
         }
       }
     } catch (error) {
       console.error("Auth error:", error);
-      setError("An unexpected error occurred");
+      setError("An unexpected error occurred. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -128,7 +146,8 @@ export default function LoginPage() {
     setIsLoading(true);
     setError("");
     try {
-      await signIn("google", { callbackUrl: "/dashboard" });
+      // OAuth users will be redirected to role-setup if they're new
+      await signIn("google", { callbackUrl: "/auth/role-setup" });
     } catch (error) {
       console.error("Google sign in error:", error);
       setError("Failed to sign in with Google");

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,6 +11,7 @@ import { Shield, Loader2, CheckCircle2 } from "lucide-react";
 
 export default function RoleSelectionModal({ isOpen, onClose, userEmail, userName }) {
   const router = useRouter();
+  const { update } = useSession();
   const [selectedRole, setSelectedRole] = useState("TEAM_MEMBER");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -59,6 +61,14 @@ export default function RoleSelectionModal({ isOpen, onClose, userEmail, userNam
       });
 
       if (response.ok) {
+        // Update the session with new role
+        await update({
+          user: {
+            role: selectedRole,
+            name: userName,
+          },
+        });
+        
         onClose();
         router.push("/dashboard");
         router.refresh();

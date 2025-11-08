@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import StaggeredMenu from "@/components/StaggeredMenu";
+import RoleBasedNav from "@/components/RoleBasedNav";
 
 export default function DashboardLayout({ children }) {
   const [menuBtnColor, setMenuBtnColor] = useState('#000000');
@@ -41,6 +42,7 @@ export default function DashboardLayout({ children }) {
             items={[
               { label: "Home", link: "/", ariaLabel: "Go to Home" },
               { label: "Dashboard", link: "/dashboard", ariaLabel: "View Dashboard" },
+              { label: "Projects", link: "/dashboard/projects", ariaLabel: "View Projects" },
               { label: "Assistant", link: "/assistant", ariaLabel: "AI Assistant" },
               { label: "Features", link: "/#features", ariaLabel: "View Features" },
             ]}
@@ -53,8 +55,13 @@ export default function DashboardLayout({ children }) {
         </div>
       </div>
 
+      {/* Role-Based Navigation */}
+      <div className="pt-20">
+        <RoleBasedNav />
+      </div>
+
       {/* Main Content */}
-      <main className="pt-20">
+      <main>
         {children}
       </main>
     </>
