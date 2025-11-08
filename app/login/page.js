@@ -208,25 +208,25 @@ export default function LoginPage() {
         <div className="hidden md:block space-y-6">
           <div className="space-y-4">
             <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/20">
-              Smart Finance Platform
+              Project Management Platform
             </Badge>
             <h1 className="text-5xl font-bold text-foreground ivy-font">
               Welcome to
               <span className="block mt-2 bg-linear-to-r from-emerald-500 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
-                Finance UI
+                OneFlow
               </span>
             </h1>
             <p className="text-lg text-muted-foreground ivy-font max-w-md">
-              Track spending, forecast cashflow, and make data-driven decisions with our powerful analytics platform.
+              Streamline your projects, track tasks, and collaborate with your team in one unified platform.
             </p>
           </div>
 
           {/* Feature Cards */}
           <div className="space-y-3 mt-8">
             {[
-              { icon: TrendingUp, title: "Real-time Analytics", desc: "Live market data and insights" },
-              { icon: Shield, title: "Bank-level Security", desc: "Your data is encrypted and protected" },
-              { icon: Sparkles, title: "AI-Powered Insights", desc: "Smart recommendations for your portfolio" }
+              { icon: TrendingUp, title: "Project Analytics", desc: "Track progress and performance metrics" },
+              { icon: Shield, title: "Secure & Reliable", desc: "Your data is encrypted and protected" },
+              { icon: Sparkles, title: "Smart Task Management", desc: "Kanban boards and workflow automation" }
             ].map((feature, idx) => (
               <div 
                 key={idx}
@@ -258,7 +258,7 @@ export default function LoginPage() {
             <CardDescription className="ivy-font">
               {isLogin 
                 ? "Enter your credentials to access your account" 
-                : "Sign up to start managing your finances"}
+                : "Sign up to start managing your projects"}
             </CardDescription>
           </CardHeader>
           <CardContent>
