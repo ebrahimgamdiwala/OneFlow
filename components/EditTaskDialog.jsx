@@ -21,9 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, X, ImageIcon } from "lucide-react";
+import { Loader2, X, ImageIcon, Lock, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
-export default function EditTaskDialog({ isOpen, onClose, task, onTaskUpdated, canManageTasks = true, userId }) {
+export default function EditTaskDialog({ isOpen, onClose, task, onTaskUpdated, canManageTasks = true, userId, userRole }) {
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
   const [imageFiles, setImageFiles] = useState([]);
@@ -42,6 +43,10 @@ export default function EditTaskDialog({ isOpen, onClose, task, onTaskUpdated, c
     coverUrl: "",
     images: [],
   });
+
+  // Team members can only update status, not other critical fields
+  const isTeamMember = userRole === 'TEAM_MEMBER';
+  const canEditCriticalFields = !isTeamMember;
 
   useEffect(() => {
     if (isOpen && task) {
@@ -266,9 +271,6 @@ export default function EditTaskDialog({ isOpen, onClose, task, onTaskUpdated, c
   // Check if user can edit this task
   const isTaskOwner = task.assigneeId === userId;
   const canEdit = canManageTasks || isTaskOwner;
-  
-  // Team members can only edit: status, loggedHours, and description
-  const isTeamMember = !canManageTasks && isTaskOwner;
 
   if (!canEdit) {
     return (
@@ -294,11 +296,26 @@ export default function EditTaskDialog({ isOpen, onClose, task, onTaskUpdated, c
         <DialogHeader>
           <DialogTitle>Edit Task</DialogTitle>
           <DialogDescription>
-            {isTeamMember 
-              ? "Update your task progress and log hours"
-              : "Update task details below"}
+            {isTeamMember ? (
+              <span className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                <Lock className="h-4 w-4" />
+                You can only update status. Use comments to communicate with your manager.
+              </span>
+            ) : (
+              "Update task details"
+            )}
           </DialogDescription>
         </DialogHeader>
+
+        {isTeamMember && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              As a team member, you can only update the task status. To communicate about the task, please use the comment feature.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
             {/* Cover Preview */}

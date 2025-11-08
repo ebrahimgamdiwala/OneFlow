@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import EditTaskDialog from "@/components/EditTaskDialog";
+import TaskCommentDialog from "@/components/TaskCommentDialog";
 import ImageCarousel from "@/components/ImageCarousel";
 import {
   Clock,
@@ -76,6 +77,7 @@ export default function TasksPage() {
   const [selectedProject, setSelectedProject] = useState("all");
   const [selectedPriority, setSelectedPriority] = useState("all");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [commentDialogOpen, setCommentDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
 
   useEffect(() => {
@@ -177,7 +179,17 @@ export default function TasksPage() {
 
   const handleTaskClick = (task) => {
     setSelectedTask(task);
-    setEditDialogOpen(true);
+    // Team members see comment dialog, others see edit dialog
+    if (isTeamMember) {
+      setCommentDialogOpen(true);
+    } else {
+      setEditDialogOpen(true);
+    }
+  };
+
+  const handleAddComment = (task) => {
+    setSelectedTask(task);
+    setCommentDialogOpen(true);
   };
 
   const handleTaskUpdated = (updatedTask) => {
@@ -415,10 +427,13 @@ export default function TasksPage() {
               {filteredTasks.map((task) => (
                 <Card
                   key={task.id}
-                  className="border-border/40 hover:border-border transition-all hover:shadow-md cursor-pointer group"
-                  onClick={() => handleTaskClick(task)}
+                  className="border-border/40 hover:border-border transition-all hover:shadow-md group"
                 >
                   <CardContent className="p-4">
+                    <div 
+                      className="cursor-pointer"
+                      onClick={() => handleTaskClick(task)}
+                    >
                     {/* Image Carousel or Cover */}
                     {task.images && task.images.length > 0 ? (
                       <div className="mb-3 -mx-4 -mt-4 h-32 overflow-hidden rounded-t-lg">
@@ -520,6 +535,25 @@ export default function TasksPage() {
                         </span>
                       </div>
                     )}
+                    </div>
+
+                    {/* Action Buttons - Outside clickable area */}
+                    {!isTeamMember && (
+                      <div className="mt-3 pt-3 border-t border-border/40 flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 gap-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddComment(task);
+                          }}
+                        >
+                          <MessageSquare className="h-3 w-3" />
+                          Comment
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -537,6 +571,20 @@ export default function TasksPage() {
         }}
         task={selectedTask}
         onTaskUpdated={handleTaskUpdated}
+        userId={session?.user?.id}
+        userRole={session?.user?.role}
+      />
+
+      {/* Task Comment Dialog for Team Members */}
+      <TaskCommentDialog
+        isOpen={commentDialogOpen}
+        onClose={() => {
+          setCommentDialogOpen(false);
+          setSelectedTask(null);
+        }}
+        task={selectedTask}
+        userId={session?.user?.id}
+        userRole={session?.user?.role}
       />
     </div>
   );
