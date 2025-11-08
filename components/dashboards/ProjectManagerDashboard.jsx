@@ -13,6 +13,9 @@ import {
   CheckCircle2,
   DollarSign,
   ArrowRight,
+  FileText,
+  Check,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -27,8 +30,10 @@ export default function ProjectManagerDashboard({ user }) {
     delayedTasks: 0,
     teamMembers: 0,
     hoursLogged: 0,
+    pendingSalesOrders: 0,
   });
   const [projects, setProjects] = useState([]);
+  const [pendingSalesOrders, setPendingSalesOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -48,6 +53,20 @@ export default function ProjectManagerDashboard({ user }) {
           activeProjects: active,
         }));
         setProjects(projectsData.slice(0, 6));
+      }
+
+      // Fetch pending sales orders
+      const salesOrdersRes = await fetch("/api/sales-orders?status=PENDING_APPROVAL");
+      if (salesOrdersRes.ok) {
+        const salesOrders = await salesOrdersRes.json();
+        
+        // Show ALL pending sales orders to any PROJECT_MANAGER
+        // This allows any project manager to approve requests
+        setPendingSalesOrders(salesOrders);
+        setStats((prev) => ({
+          ...prev,
+          pendingSalesOrders: salesOrders.length,
+        }));
       }
 
       // Fetch tasks
@@ -93,6 +112,54 @@ export default function ProjectManagerDashboard({ user }) {
     }
   };
 
+  const handleApproveSalesOrder = async (salesOrderId, action) => {
+    try {
+      const confirmMsg = action === "approve"
+        ? "Are you sure you want to approve this sales order request?"
+        : "Are you sure you want to reject this sales order request?";
+      
+      if (!confirm(confirmMsg)) return;
+
+      const note = action === "reject"
+        ? prompt("Please provide a reason for rejection (optional):")
+        : null;
+
+      const response = await fetch(`/api/sales-orders/${salesOrderId}/approve`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action, note }),
+      });
+
+      if (response.ok) {
+        alert(`Sales order ${action === "approve" ? "approved" : "rejected"} successfully!`);
+        // Refresh dashboard data
+        fetchDashboardData();
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.error || "Failed to process request"}`);
+      }
+    } catch (error) {
+      console.error("Error processing sales order:", error);
+      alert("Failed to process sales order request");
+    }
+  };
+
+  const formatCurrency = (amount) => {
+    if (!amount) return "₹0";
+    return `₹${parseFloat(amount).toLocaleString("en-IN")}`;
+  };
+
+  const formatDate = (date) => {
+    if (!date) return "Not set";
+    return new Date(date).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -118,7 +185,7 @@ export default function ProjectManagerDashboard({ user }) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card className="border-border/40">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
@@ -156,6 +223,17 @@ export default function ProjectManagerDashboard({ user }) {
 
         <Card className="border-border/40">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending SO Requests</CardTitle>
+            <FileText className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{stats.pendingSalesOrders}</div>
+            <p className="text-xs text-muted-foreground">Awaiting approval</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/40">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Team Members</CardTitle>
             <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
@@ -165,6 +243,105 @@ export default function ProjectManagerDashboard({ user }) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Pending Sales Order Requests */}
+      <Card className={pendingSalesOrders.length > 0 ? "border-orange-500/30 bg-orange-500/5" : "border-border/40"}>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Sales Order Requests</CardTitle>
+              <CardDescription>Review and approve sales order requests from sales team</CardDescription>
+            </div>
+            {pendingSalesOrders.length > 0 && (
+              <Badge variant="outline" className="bg-orange-500/10 text-orange-600">
+                {pendingSalesOrders.length} pending
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {pendingSalesOrders.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
+              <h3 className="text-sm font-semibold mb-1">No Pending Requests</h3>
+              <p className="text-sm text-muted-foreground">
+                Sales order requests will appear here for your approval
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {pendingSalesOrders.map((so) => (
+                <Card key={so.id} className="border-border/40">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 space-y-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-semibold">{so.number}</h4>
+                            <Badge variant="outline" className="bg-orange-500/10 text-orange-600 text-xs">
+                              Pending Approval
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Requested by: <span className="font-medium">{so.requestedBy?.name || "Unknown"}</span>
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Project:</span>
+                            <p className="font-medium">{so.project?.name || "No project"}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Amount:</span>
+                            <p className="font-medium text-green-600">{formatCurrency(so.total)}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Date:</span>
+                            <p className="font-medium">{formatDate(so.date)}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Requested:</span>
+                            <p className="font-medium">{formatDate(so.requestedAt || so.createdAt)}</p>
+                          </div>
+                        </div>
+
+                        {so.note && (
+                          <div className="pt-2">
+                            <span className="text-sm text-muted-foreground">Note:</span>
+                            <p className="text-sm mt-1">{so.note}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 border-green-500/30 text-green-600 hover:bg-green-500/10"
+                          onClick={() => handleApproveSalesOrder(so.id, "approve")}
+                        >
+                          <Check className="h-4 w-4" />
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 border-red-500/30 text-red-600 hover:bg-red-500/10"
+                          onClick={() => handleApproveSalesOrder(so.id, "reject")}
+                        >
+                          <X className="h-4 w-4" />
+                          Reject
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Projects Grid */}
       <Card className="border-border/40">

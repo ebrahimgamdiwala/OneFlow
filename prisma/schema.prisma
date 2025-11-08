@@ -42,6 +42,9 @@ enum Priority {
 
 enum DocumentStatus {
   DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
   CONFIRMED
   CANCELLED
   PAID
@@ -81,6 +84,10 @@ model User {
   attachments     Attachment[]
   accounts        Account[]
   sessions        Session[]
+  
+  // Sales Order approval workflow
+  requestedSalesOrders SalesOrder[] @relation("SalesOrderRequester")
+  approvedSalesOrders  SalesOrder[] @relation("SalesOrderApprover")
 }
 
 model Partner {
@@ -291,10 +298,21 @@ model SalesOrder {
   validUntil  DateTime?
   status      DocumentStatus @default(DRAFT)
   currency    String       @default("INR")
+  paymentTerms String?
   note        String?
   subtotal    Decimal      @db.Decimal(12,2) @default(0.00)
   taxTotal    Decimal      @db.Decimal(12,2) @default(0.00)
   total       Decimal      @db.Decimal(12,2) @default(0.00)
+  
+  // Approval workflow fields
+  requestedBy   User?      @relation("SalesOrderRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+  requestedById String?
+  approvedBy    User?      @relation("SalesOrderApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedById  String?
+  approvalNote  String?
+  requestedAt   DateTime?
+  approvedAt    DateTime?
+  
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -304,6 +322,8 @@ model SalesOrder {
   @@index([partnerId])
   @@index([projectId])
   @@index([status])
+  @@index([requestedById])
+  @@index([approvedById])
 }
 
 model SalesOrderLine {

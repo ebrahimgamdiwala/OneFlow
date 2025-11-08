@@ -46,7 +46,6 @@ const NAV_ITEMS = {
   ],
   SALES: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Projects", href: "/dashboard/projects", icon: FolderKanban },
     { label: "Sales Orders", href: "/dashboard/sales-orders", icon: ShoppingCart },
     { label: "Invoices", href: "/dashboard/invoices", icon: Receipt },
     { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },

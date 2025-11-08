@@ -299,9 +299,14 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     if (status === "authenticated") {
+      // Block SALES role from accessing projects page
+      if (session?.user?.role === "SALES") {
+        router.push("/dashboard/sales-orders");
+        return;
+      }
       fetchProjects();
     }
-  }, [status, activeFilter]);
+  }, [status, activeFilter, session, router]);
 
   const fetchProjects = async () => {
     try {
