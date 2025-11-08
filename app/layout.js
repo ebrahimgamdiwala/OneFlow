@@ -17,7 +17,7 @@ export const metadata = {
   title: "OneFlow - Plan to Bill in One Place",
   description: "Modular Project Management ERP. Manage projects from planning to execution to billing—track tasks, hours, and financials with real-time profitability insights.",
   icons: {
-    icon: '/one-flow.svg',
+    icon: '/one-flow-inverted.svg',
   },
 };
 
