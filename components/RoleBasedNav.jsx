@@ -27,10 +27,11 @@ const NAV_ITEMS = {
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Projects", href: "/dashboard/projects", icon: FolderKanban },
     { label: "Users", href: "/dashboard/users", icon: Users },
+    { label: "Database", href: "/dashboard/database", icon: Activity },
+    { label: "Audit Logs", href: "/dashboard/logs", icon: FileText },
     { label: "Sales Orders", href: "/dashboard/sales-orders", icon: ShoppingCart },
     { label: "Invoices", href: "/dashboard/invoices", icon: Receipt },
     { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
-    { label: "Settings", href: "/dashboard/settings", icon: Settings },
   ],
   PROJECT_MANAGER: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
