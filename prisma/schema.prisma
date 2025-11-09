@@ -94,6 +94,7 @@ model User {
   purchaseOrderActivities PurchaseOrderActivity[]
 
   managedProjects ProjectManager[]
+  projectsManaged Project[] @relation("ProjectManager")
 }
 
 model Partner {
@@ -122,6 +123,8 @@ model Project {
   name          String
   code          String?
   description   String?
+  managerId     String?
+  manager       User?          @relation("ProjectManager", fields: [managerId], references: [id], onDelete: SetNull)
   status        ProjectStatus  @default(PLANNED)
   startDate     DateTime?
   endDate       DateTime?
@@ -142,6 +145,7 @@ model Project {
   expenses      Expense[]
 
   @@index([status])
+  @@index([managerId])
 }
 
 model ProjectManager {

@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import AdminDashboard from "@/components/dashboards/AdminDashboard";
+import ComprehensiveAdminDashboard from "@/components/dashboards/ComprehensiveAdminDashboard";
 import ProjectManagerDashboard from "@/components/dashboards/ProjectManagerDashboard";
 import TeamMemberDashboard from "@/components/dashboards/TeamMemberDashboard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,7 +38,7 @@ export default function Dashboard() {
   const renderDashboard = () => {
     switch (userRole) {
       case "ADMIN":
-        return <AdminDashboard user={session.user} />;
+        return <ComprehensiveAdminDashboard user={session.user} />;
       case "PROJECT_MANAGER":
         return <ProjectManagerDashboard user={session.user} />;
       case "TEAM_MEMBER":

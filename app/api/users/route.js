@@ -25,9 +25,12 @@ export async function GET(req) {
         role: true,
         avatarUrl: true,
         image: true,
+        hourlyRate: true,
+        createdAt: true,
+        updatedAt: true,
       },
       orderBy: {
-        name: 'asc',
+        createdAt: 'desc',
       },
     });
     
