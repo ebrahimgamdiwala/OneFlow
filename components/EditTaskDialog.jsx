@@ -24,7 +24,7 @@ import {
 import { Loader2, X, ImageIcon, Lock, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-export default function EditTaskDialog({ isOpen, onClose, task, onTaskUpdated, canManageTasks = true, userId, userRole }) {
+export default function EditTaskDialog({ isOpen, onClose, task, onTaskUpdated, canManageTasks = true, userId, userRole, projectMembers = [], projectManager = null }) {
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
   const [imageFiles, setImageFiles] = useState([]);
@@ -68,15 +68,44 @@ export default function EditTaskDialog({ isOpen, onClose, task, onTaskUpdated, c
       setImageFiles([]);
       fetchUsers();
     }
-  }, [isOpen, task]);
+  }, [isOpen, task, projectMembers, projectManager, userId]);
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch("/api/users");
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data);
+      // Filter users to show only project members and project manager
+      // Exclude the current logged-in user from the list
+      const eligibleUsers = [];
+      
+      // Add project manager if exists and is not the current user
+      if (projectManager && projectManager.id !== userId) {
+        eligibleUsers.push({
+          id: projectManager.id,
+          name: projectManager.name,
+          email: projectManager.email,
+          role: projectManager.role || 'PROJECT_MANAGER',
+        });
       }
+      
+      // Add team members who are not the current user
+      if (projectMembers && projectMembers.length > 0) {
+        projectMembers.forEach(member => {
+          if (member.user && member.user.id !== userId) {
+            eligibleUsers.push({
+              id: member.user.id,
+              name: member.user.name,
+              email: member.user.email,
+              role: member.user.role || 'TEAM_MEMBER',
+            });
+          }
+        });
+      }
+      
+      // Remove duplicates based on user ID
+      const uniqueUsers = eligibleUsers.filter((user, index, self) =>
+        index === self.findIndex((u) => u.id === user.id)
+      );
+      
+      setUsers(uniqueUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
     }

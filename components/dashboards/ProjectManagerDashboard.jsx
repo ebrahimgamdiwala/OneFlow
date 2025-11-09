@@ -1,27 +1,31 @@
 "use client";
-
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import {
+  CheckCircle2,
   FolderKanban,
   Users,
-  AlertTriangle,
-  TrendingUp,
-  Clock,
-  CheckCircle2,
-  DollarSign,
   ArrowRight,
   FileText,
   Check,
   X,
+  AlertTriangle,
 } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
 
-export default function ProjectManagerDashboard({ user }) {
+const ProjectManagerDashboard = () => {
+  const { data: session } = useSession();
   const router = useRouter();
   const [stats, setStats] = useState({
     totalProjects: 0,
@@ -29,157 +33,127 @@ export default function ProjectManagerDashboard({ user }) {
     totalTasks: 0,
     delayedTasks: 0,
     teamMembers: 0,
-    hoursLogged: 0,
     pendingSalesOrders: 0,
   });
   const [projects, setProjects] = useState([]);
   const [pendingSalesOrders, setPendingSalesOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
+    if (!session) return;
+    setLoading(true);
     try {
-      // Fetch all data in parallel for better performance
-      const [projectsRes, salesOrdersRes, tasksRes, usersRes] = await Promise.all([
-        fetch("/api/projects"),
-        fetch("/api/sales-orders?status=PENDING_APPROVAL"),
-        fetch("/api/tasks"),
-        fetch("/api/users"),
+      const [statsRes, projectsRes, soRes] = await Promise.all([
+        fetch("/api/user/profile?stats=true"),
+        fetch("/api/projects?limit=6"),
+        fetch("/api/sales-orders?status=pending_approval"),
       ]);
 
-      // Process projects
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setStats((prev) => ({ ...prev, ...statsData }));
+      }
       if (projectsRes.ok) {
         const projectsData = await projectsRes.json();
-        const active = projectsData.filter((p) => p.status === "IN_PROGRESS").length;
-        setStats((prev) => ({
-          ...prev,
-          totalProjects: projectsData.length,
-          activeProjects: active,
-        }));
-        setProjects(projectsData.slice(0, 6));
+        setProjects(projectsData);
       }
-
-      // Process pending sales orders
-      if (salesOrdersRes.ok) {
-        const salesOrders = await salesOrdersRes.json();
-        
-        // Show ALL pending sales orders to any PROJECT_MANAGER
-        // This allows any project manager to approve requests
-        setPendingSalesOrders(salesOrders);
-        setStats((prev) => ({
-          ...prev,
-          pendingSalesOrders: salesOrders.length,
-        }));
-      }
-
-      // Process tasks
-      if (tasksRes.ok) {
-        const tasks = await tasksRes.json();
-        const delayed = tasks.filter(
-          (t) => t.deadline && new Date(t.deadline) < new Date() && t.status !== "DONE"
-        ).length;
-        setStats((prev) => ({
-          ...prev,
-          totalTasks: tasks.length,
-          delayedTasks: delayed,
-        }));
-      }
-
-      // Process team members
-      if (usersRes.ok) {
-        const users = await usersRes.json();
-        const teamCount = users.filter((u) => u.role === "TEAM_MEMBER").length;
-        setStats((prev) => ({ ...prev, teamMembers: teamCount }));
+      if (soRes.ok) {
+        const soData = await soRes.json();
+        setPendingSalesOrders(soData);
+        setStats((prev) => ({ ...prev, pendingSalesOrders: soData.length }));
       }
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+      console.error("Failed to fetch dashboard data:", error);
+      toast.error("Failed to load dashboard data.");
     } finally {
       setLoading(false);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  const handleApproveSalesOrder = async (id, action) => {
+    const originalOrders = [...pendingSalesOrders];
+    const order = pendingSalesOrders.find((so) => so.id === id);
+    const newStatus = action === "approve" ? "approved" : "rejected";
+
+    // Optimistic update
+    setPendingSalesOrders(pendingSalesOrders.filter((so) => so.id !== id));
+    toast.loading(`Updating sales order...`);
+
+    try {
+      const response = await fetch(`/api/sales-orders/${id}/approve`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      toast.dismiss();
+
+      if (!response.ok) {
+        throw new Error("Failed to update sales order.");
+      }
+
+      toast.success(`Sales order has been ${newStatus}.`);
+      fetchDashboardData(); // Re-fetch to ensure data consistency
+    } catch (error) {
+      console.error(error);
+      toast.dismiss();
+      toast.error(error.message);
+      setPendingSalesOrders(originalOrders); // Revert on failure
     }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "PLANNED":
-        return "bg-slate-500/10 text-slate-600 border-slate-500/20";
       case "IN_PROGRESS":
-        return "bg-blue-500/10 text-blue-600 border-blue-500/20";
-      case "ON_HOLD":
-        return "bg-orange-500/10 text-orange-600 border-orange-500/20";
+        return "bg-blue-500/10 text-blue-600";
       case "COMPLETED":
-        return "bg-green-500/10 text-green-600 border-green-500/20";
+        return "bg-green-500/10 text-green-600";
+      case "ON_HOLD":
+        return "bg-yellow-500/10 text-yellow-600";
+      case "CANCELLED":
+        return "bg-red-500/10 text-red-600";
       default:
-        return "bg-gray-500/10 text-gray-600 border-gray-500/20";
-    }
-  };
-
-  const handleApproveSalesOrder = async (salesOrderId, action) => {
-    try {
-      const confirmMsg = action === "approve"
-        ? "Are you sure you want to approve this sales order request?"
-        : "Are you sure you want to reject this sales order request?";
-      
-      if (!confirm(confirmMsg)) return;
-
-      const note = action === "reject"
-        ? prompt("Please provide a reason for rejection (optional):")
-        : null;
-
-      const response = await fetch(`/api/sales-orders/${salesOrderId}/approve`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ action, note }),
-      });
-
-      if (response.ok) {
-        alert(`Sales order ${action === "approve" ? "approved" : "rejected"} successfully!`);
-        // Refresh dashboard data
-        fetchDashboardData();
-      } else {
-        const error = await response.json();
-        alert(`Error: ${error.error || "Failed to process request"}`);
-      }
-    } catch (error) {
-      console.error("Error processing sales order:", error);
-      alert("Failed to process sales order request");
+        return "bg-gray-500/10 text-gray-600";
     }
   };
 
   const formatCurrency = (amount) => {
-    if (!amount) return "₹0";
-    return `₹${parseFloat(amount).toLocaleString("en-IN")}`;
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+    }).format(amount);
   };
 
-  const formatDate = (date) => {
-    if (!date) return "Not set";
-    return new Date(date).toLocaleDateString("en-US", {
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
       month: "short",
       day: "numeric",
-      year: "numeric",
     });
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center h-[80vh]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <p className="text-muted-foreground">Loading your dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Project Manager Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your projects and team effectively
+          <h1 className="text-2xl font-bold">Project Manager Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome back, {session?.user?.name}! Here&apos;s your project overview.
           </p>
         </div>
         <Button onClick={() => router.push("/dashboard/projects/new")}>
@@ -220,7 +194,9 @@ export default function ProjectManagerDashboard({ user }) {
             <AlertTriangle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.delayedTasks}</div>
+            <div className="text-2xl font-bold text-red-600">
+              {stats.delayedTasks}
+            </div>
             <p className="text-xs text-muted-foreground">Need attention</p>
           </CardContent>
         </Card>
@@ -231,7 +207,9 @@ export default function ProjectManagerDashboard({ user }) {
             <FileText className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.pendingSalesOrders}</div>
+            <div className="text-2xl font-bold text-orange-600">
+              {stats.pendingSalesOrders}
+            </div>
             <p className="text-xs text-muted-foreground">Awaiting approval</p>
           </CardContent>
         </Card>
@@ -239,7 +217,7 @@ export default function ProjectManagerDashboard({ user }) {
         <Card className="border-border/40">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Team Members</CardTitle>
-            <Users className="h-4 w-4 text-blue-600" />
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.teamMembers}</div>
@@ -451,50 +429,8 @@ export default function ProjectManagerDashboard({ user }) {
           )}
         </CardContent>
       </Card>
-
-      {/* Quick Actions */}
-      <Card className="border-border/40">
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Common tasks for project management</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 md:grid-cols-4">
-            <Button
-              variant="outline"
-              className="justify-start"
-              onClick={() => router.push("/dashboard/projects/new")}
-            >
-              <FolderKanban className="mr-2 h-4 w-4" />
-              New Project
-            </Button>
-            <Button
-              variant="outline"
-              className="justify-start"
-              onClick={() => router.push("/dashboard/tasks")}
-            >
-              <CheckCircle2 className="mr-2 h-4 w-4" />
-              View All Tasks
-            </Button>
-            <Button
-              variant="outline"
-              className="justify-start"
-              onClick={() => router.push("/dashboard/users")}
-            >
-              <Users className="mr-2 h-4 w-4" />
-              Manage Team
-            </Button>
-            <Button
-              variant="outline"
-              className="justify-start"
-              onClick={() => router.push("/dashboard/analytics")}
-            >
-              <TrendingUp className="mr-2 h-4 w-4" />
-              View Analytics
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
-}
+};
+
+export default ProjectManagerDashboard;

@@ -391,7 +391,15 @@ export default function ProjectDetailPage() {
                   : "View and update your assigned tasks"}
               </p>
             </div>
-            {canManageProject && <CreateTaskDialog projectId={projectId} onTaskCreated={handleTaskCreated} />}
+            {canManageProject && (
+              <CreateTaskDialog 
+                projectId={projectId} 
+                onTaskCreated={handleTaskCreated}
+                projectMembers={project.members || []}
+                projectManager={project.manager}
+                currentUserId={session?.user?.id}
+              />
+            )}
           </div>
 
           <KanbanBoard 
@@ -400,6 +408,8 @@ export default function ProjectDetailPage() {
             canManageTasks={canManageProject}
             userId={session?.user?.id}
             userRole={session?.user?.role}
+            projectMembers={project.members || []}
+            projectManager={project.manager}
           />
         </TabsContent>
 

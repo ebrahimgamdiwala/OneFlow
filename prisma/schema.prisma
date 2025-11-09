@@ -75,7 +75,6 @@ model User {
   hourlyRate Decimal?  @db.Decimal(12,2)
   avatarUrl  String?
 
-  managedProjects Project[]      @relation("ProjectManager")
   membership      ProjectMember[]
   assignedTasks   Task[]          @relation("Assignee")
   timesheets      Timesheet[]
@@ -93,6 +92,8 @@ model User {
   requestedPurchaseOrders PurchaseOrder[] @relation("PORequestedBy")
   approvedPurchaseOrders  PurchaseOrder[] @relation("POApprovedBy")
   purchaseOrderActivities PurchaseOrderActivity[]
+
+  managedProjects ProjectManager[]
 }
 
 model Partner {
@@ -121,8 +122,6 @@ model Project {
   name          String
   code          String?
   description   String?
-  managerId     String?
-  manager       User?          @relation("ProjectManager", fields: [managerId], references: [id], onDelete: SetNull)
   status        ProjectStatus  @default(PLANNED)
   startDate     DateTime?
   endDate       DateTime?
@@ -133,6 +132,7 @@ model Project {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
+  managers      ProjectManager[]
   members       ProjectMember[]
   tasks         Task[]
   salesOrders   SalesOrder[]
@@ -142,6 +142,16 @@ model Project {
   expenses      Expense[]
 
   @@index([status])
+}
+
+model ProjectManager {
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  manager   User    @relation(fields: [managerId], references: [id], onDelete: Cascade)
+  managerId String
+  assignedAt DateTime @default(now())
+
+  @@id([projectId, managerId])
   @@index([managerId])
 }
 
@@ -232,7 +242,7 @@ model Timesheet {
   userId     String
   date       DateTime
   hours      Decimal  @db.Decimal(8,2)
-  billable   Boolean  @default(true)
+  isBillable Boolean  @default(true)
   rate       Decimal? @db.Decimal(12,2)
   amount     Decimal? @db.Decimal(12,2)
   linkedInvoiceLineId String?

@@ -261,14 +261,9 @@ export const StaggeredMenu = ({
   }, [openMenuButtonColor, menuButtonColor, changeMenuColorOnOpen]);
 
   React.useEffect(() => {
-    if (toggleBtnRef.current) {
-      if (changeMenuColorOnOpen) {
-        const targetColor = openRef.current ? openMenuButtonColor : menuButtonColor;
-        gsap.set(toggleBtnRef.current, { color: targetColor });
-      } else {
-        gsap.set(toggleBtnRef.current, { color: menuButtonColor });
-      }
-    }
+    const btn = toggleBtnRef.current;
+    if (!btn) return;
+    gsap.set(btn, { color: menuButtonColor });
   }, [changeMenuColorOnOpen, menuButtonColor, openMenuButtonColor]);
 
   const animateText = useCallback(opening => {

@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Loader2, X, ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 
-export default function CreateTaskDialog({ projectId, onTaskCreated, trigger }) {
+export default function CreateTaskDialog({ projectId, onTaskCreated, trigger, projectMembers = [], projectManager = null, currentUserId = null }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
@@ -48,15 +48,44 @@ export default function CreateTaskDialog({ projectId, onTaskCreated, trigger }) 
     if (open) {
       fetchUsers();
     }
-  }, [open]);
+  }, [open, projectMembers, projectManager, currentUserId]);
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch("/api/users");
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data);
+      // Filter users to show only project members and project manager
+      // Exclude the current logged-in user from the list
+      const eligibleUsers = [];
+      
+      // Add project manager if exists and is not the current user
+      if (projectManager && projectManager.id !== currentUserId) {
+        eligibleUsers.push({
+          id: projectManager.id,
+          name: projectManager.name,
+          email: projectManager.email,
+          role: projectManager.role || 'PROJECT_MANAGER',
+        });
       }
+      
+      // Add team members who are not the current user
+      if (projectMembers && projectMembers.length > 0) {
+        projectMembers.forEach(member => {
+          if (member.user && member.user.id !== currentUserId) {
+            eligibleUsers.push({
+              id: member.user.id,
+              name: member.user.name,
+              email: member.user.email,
+              role: member.user.role || 'TEAM_MEMBER',
+            });
+          }
+        });
+      }
+      
+      // Remove duplicates based on user ID
+      const uniqueUsers = eligibleUsers.filter((user, index, self) =>
+        index === self.findIndex((u) => u.id === user.id)
+      );
+      
+      setUsers(uniqueUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
     }

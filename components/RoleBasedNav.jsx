@@ -56,6 +56,7 @@ const NAV_ITEMS = {
   FINANCE: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Projects", href: "/dashboard/projects", icon: FolderKanban },
+    { label: "Purchase Orders", href: "/dashboard/purchase-orders", icon: ShoppingCart },
     { label: "Invoices", href: "/dashboard/invoices", icon: Receipt },
     { label: "Vendor Bills", href: "/dashboard/vendor-bills", icon: CreditCard },
     { label: "Expenses", href: "/dashboard/expenses", icon: Wallet },
