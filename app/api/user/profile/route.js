@@ -76,15 +76,44 @@ export async function PUT(req) {
       );
     }
 
+    // Check if user exists and get current data
+    const existingUser = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { 
+        id: true, 
+        role: true, 
+        isApproved: true,
+        password: true // Check if this is a credentials-based user
+      }
+    });
+
+    if (!existingUser) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    // Prepare update data
+    const updateData = {
+      name: name.trim(),
+      role,
+      hourlyRate: hourlyRate ? parseFloat(hourlyRate) : null,
+      avatarUrl: avatarUrl && avatarUrl.trim() !== "" ? avatarUrl.trim() : null,
+    };
+
+    // If this is a new OAuth user setting their role for the first time
+    // (role was null and isApproved is false), keep isApproved as false
+    // ALL roles require admin approval for OAuth users
+    if (!existingUser.role && !existingUser.isApproved && !existingUser.password) {
+      // OAuth user setting role for first time - requires admin approval
+      // Keep isApproved as false for all roles
+    }
+
     // Update user
     const updatedUser = await prisma.user.update({
       where: { email: session.user.email },
-      data: {
-        name: name.trim(),
-        role,
-        hourlyRate: hourlyRate ? parseFloat(hourlyRate) : null,
-        avatarUrl: avatarUrl && avatarUrl.trim() !== "" ? avatarUrl.trim() : null,
-      },
+      data: updateData,
       select: {
         id: true,
         email: true,
@@ -93,6 +122,7 @@ export async function PUT(req) {
         hourlyRate: true,
         avatarUrl: true,
         image: true,
+        isApproved: true,
         updatedAt: true,
       },
     });

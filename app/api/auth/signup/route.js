@@ -36,6 +36,9 @@ export async function POST(req) {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
+    // All users require admin approval regardless of role
+    const isAutoApproved = false;
+
     // Create user with default role
     const user = await prisma.user.create({
       data: {
@@ -43,12 +46,15 @@ export async function POST(req) {
         password: hashedPassword,
         name: name || null,
         role: role || "TEAM_MEMBER", // Default role
+        isApproved: isAutoApproved, // All users need approval
+        approvedAt: null,
       },
       select: {
         id: true,
         email: true,
         name: true,
         role: true,
+        isApproved: true,
         createdAt: true,
       }
     });
@@ -56,7 +62,8 @@ export async function POST(req) {
     return NextResponse.json(
       {
         message: "User created successfully",
-        user
+        user,
+        needsApproval: true, // Always needs approval
       },
       { status: 201 }
     );

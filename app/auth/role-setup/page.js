@@ -6,34 +6,54 @@ import { useRouter } from "next/navigation";
 import RoleSelectionModal from "@/components/RoleSelectionModal";
 
 export default function RoleSetupPage() {
-  const { data: session, status, update } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
-  // Determine initial modal state based on session
-  const shouldShowModal = status === "authenticated" && !session?.user?.role;
-  const [showModal, setShowModal] = useState(shouldShowModal);
+  const [showModal, setShowModal] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
+    if (status === "loading") {
+      setIsChecking(true);
+      return;
+    }
+
     if (status === "unauthenticated") {
       router.push("/login");
-    } else if (status === "authenticated" && session?.user?.role) {
-      // User already has a role (including TEAM_MEMBER), redirect to dashboard
-      router.push("/dashboard");
+      return;
+    }
+
+    if (status === "authenticated") {
+      // Check if user has a role
+      if (session?.user?.role) {
+        // User already has a role, check approval status
+        if (session.user.isApproved) {
+          router.push("/dashboard");
+        } else {
+          router.push("/auth/pending-approval");
+        }
+      } else {
+        // User has no role, show role selection modal
+        setIsChecking(false);
+        setShowModal(true);
+      }
     }
   }, [status, session, router]);
 
-  const handleClose = async () => {
+  const handleClose = () => {
     setShowModal(false);
-    // Update the session
-    await update();
-    router.push("/dashboard");
+    // The RoleSelectionModal will handle the redirect based on approval status
   };
 
-  if (status === "loading") {
+  if (status === "loading" || isChecking) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
+  }
+
+  if (!session?.user) {
+    return null;
   }
 
   return (
