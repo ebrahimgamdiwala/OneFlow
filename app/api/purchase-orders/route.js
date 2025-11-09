@@ -116,19 +116,22 @@ export async function GET(req) {
  * Create a new purchase order
  */
 export async function POST(req) {
-  const authResult = await requirePermission(req, 'purchaseOrders', 'create');
-  
-  if (authResult.error) {
-    return NextResponse.json(
-      { error: authResult.error },
-      { status: authResult.status }
-    );
-  }
-  
-  const { user } = authResult;
-  
   try {
+    const authResult = await requirePermission(req, 'purchaseOrders', 'create');
+    
+    if (authResult.error) {
+      console.error("Permission denied:", authResult);
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      );
+    }
+    
+    const { user } = authResult;
+    
     const body = await req.json();
+    console.log("Received purchase order data:", body);
+    
     const {
       number,
       partnerId,
@@ -148,14 +151,6 @@ export async function POST(req) {
     if (!number) {
       return NextResponse.json(
         { error: 'Purchase order number is required' },
-        { status: 400 }
-      );
-    }
-    
-    // For requests (PENDING_APPROVAL), only projectId is required
-    if (status !== 'PENDING_APPROVAL' && !partnerId) {
-      return NextResponse.json(
-        { error: 'Vendor is required for purchase orders' },
         { status: 400 }
       );
     }
@@ -185,13 +180,11 @@ export async function POST(req) {
       subtotal: parseFloat(subtotal) || 0,
       taxTotal: parseFloat(taxTotal) || 0,
       total: parseFloat(total) || 0,
+      requestedById: user.id,
+      requestedAt: new Date(),
     };
     
-    // If creating a request, add approval workflow fields
-    if (status === 'PENDING_APPROVAL') {
-      purchaseOrderData.requestedById = user.id;
-      purchaseOrderData.requestedAt = new Date();
-    }
+    console.log("Creating purchase order:", purchaseOrderData);
     
     // Create purchase order with lines and activity log
     const purchaseOrder = await prisma.purchaseOrder.create({
@@ -257,11 +250,13 @@ export async function POST(req) {
       },
     });
     
+    console.log("Purchase order created successfully:", purchaseOrder.id);
     return NextResponse.json(purchaseOrder, { status: 201 });
   } catch (error) {
     console.error('Error creating purchase order:', error);
+    console.error('Error stack:', error.stack);
     return NextResponse.json(
-      { error: 'Failed to create purchase order' },
+      { error: 'Failed to create purchase order', message: error.message, details: error.toString() },
       { status: 500 }
     );
   }

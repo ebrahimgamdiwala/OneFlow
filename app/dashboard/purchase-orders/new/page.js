@@ -15,13 +15,23 @@ export default function NewPurchaseOrderPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [vendors, setVendors] = useState([]);
-  const [projects, setProjects] = useState([]);
+  
+  // Mock vendors data
+  const vendors = [
+    { id: "vendor-1", name: "Acme Supplies Co." },
+    { id: "vendor-2", name: "Global Tech Solutions" },
+    { id: "vendor-3", name: "Premier Manufacturing Ltd." },
+    { id: "vendor-4", name: "Industrial Parts Inc." },
+    { id: "vendor-5", name: "Office Essentials Pvt Ltd" },
+    { id: "vendor-6", name: "Tech Hardware Distributors" },
+    { id: "vendor-7", name: "Quality Materials Corp" },
+    { id: "vendor-8", name: "Swift Logistics & Supplies" },
+  ];
   
   const [formData, setFormData] = useState({
     number: `PO${Date.now().toString().slice(-6)}`,
     vendorId: "",
-    projectId: "",
+    productName: "",
     date: new Date().toISOString().split('T')[0],
     expectedDate: "",
     currency: "INR",
@@ -36,33 +46,6 @@ export default function NewPurchaseOrderPage() {
       router.push("/login");
     }
   }, [status, router]);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      // First, seed mock vendors if they don't exist
-      await fetch("/api/seed/vendors", { method: "POST" });
-      
-      // Fetch vendors
-      const vendorsRes = await fetch("/api/partners?type=VENDOR");
-      if (vendorsRes.ok) {
-        const data = await vendorsRes.json();
-        setVendors(data);
-      }
-
-      // Fetch projects
-      const projectsRes = await fetch("/api/projects");
-      if (projectsRes.ok) {
-        const data = await projectsRes.json();
-        setProjects(data);
-      }
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    }
-  };
 
   const handleLineChange = (index, field, value) => {
     const newLines = [...formData.lines];
@@ -112,15 +95,48 @@ export default function NewPurchaseOrderPage() {
     try {
       const { subtotal, taxTotal, total } = calculateTotals();
 
+      // Validate required fields
+      if (!formData.vendorId) {
+        alert("Please select a vendor");
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.productName || formData.productName.trim() === "") {
+        alert("Please enter a product name");
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.lines || formData.lines.length === 0) {
+        alert("Please add at least one order line");
+        setLoading(false);
+        return;
+      }
+
       const payload = {
-        ...formData,
-        partnerId: formData.vendorId || null,
-        projectId: formData.projectId || null,
+        number: formData.number,
+        partnerId: null, // We'll store vendor name in note for now
+        projectId: null,
+        date: formData.date,
+        expectedDate: formData.expectedDate || null,
         subtotal,
         taxTotal,
         total,
-        status: "PENDING_APPROVAL", // Request approval from manager
+        status: "DRAFT", // Create as draft instead
+        currency: formData.currency,
+        note: `Vendor: ${vendors.find(v => v.id === formData.vendorId)?.name || 'N/A'}\nProduct: ${formData.productName}\n${formData.note || ''}`,
+        lines: formData.lines.map(line => ({
+          description: line.description,
+          quantity: parseFloat(line.quantity) || 1,
+          unit: line.unit,
+          unitPrice: parseFloat(line.unitPrice) || 0,
+          taxPercent: line.taxPercent ? parseFloat(line.taxPercent) : 0,
+          amount: parseFloat(line.amount) || 0,
+        })),
       };
+
+      console.log("Sending payload:", payload);
 
       const response = await fetch("/api/purchase-orders", {
         method: "POST",
@@ -128,16 +144,19 @@ export default function NewPurchaseOrderPage() {
         body: JSON.stringify(payload),
       });
 
+      const data = await response.json();
+      console.log("Response:", response.status, data);
+
       if (response.ok) {
-        alert("Purchase Order request submitted for approval!");
-        router.push("/dashboard");
+        alert("Purchase Order created successfully!");
+        router.push("/dashboard/purchase-orders");
       } else {
-        const error = await response.json();
-        alert(`Error: ${error.error || "Failed to create purchase order"}`);
+        console.error("Error response:", data);
+        alert(`Error: ${data.error || data.message || "Failed to create purchase order"}`);
       }
     } catch (error) {
       console.error("Error submitting purchase order:", error);
-      alert("Failed to submit purchase order request");
+      alert(`Failed to submit purchase order: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -165,9 +184,9 @@ export default function NewPurchaseOrderPage() {
           <CardTitle className="text-2xl">Purchase Order Create/Edit View</CardTitle>
           <div className="flex gap-4 mt-4">
             <Button type="submit" form="po-form" disabled={loading}>
-              {loading ? "Creating..." : "Create Bills"}
+              {loading ? "Creating..." : "Create Purchase Order"}
             </Button>
-            <Button variant="outline" type="button" onClick={() => router.push("/dashboard")}>
+            <Button variant="outline" type="button" onClick={() => router.push("/dashboard/purchase-orders")}>
               Cancel
             </Button>
           </div>
@@ -180,13 +199,14 @@ export default function NewPurchaseOrderPage() {
               <Label className="text-lg font-semibold">{formData.number}</Label>
             </div>
 
-            {/* Vendor and Project Selection */}
+            {/* Vendor and Product Selection */}
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <Label htmlFor="vendor">Vendor</Label>
+                <Label htmlFor="vendor">Vendor *</Label>
                 <Select
                   value={formData.vendorId}
                   onValueChange={(value) => setFormData({ ...formData, vendorId: value })}
+                  required
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select vendor" />
@@ -202,22 +222,15 @@ export default function NewPurchaseOrderPage() {
               </div>
 
               <div>
-                <Label htmlFor="project">Project</Label>
-                <Select
-                  value={formData.projectId}
-                  onValueChange={(value) => setFormData({ ...formData, projectId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select project" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map((project) => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="productName">Product Name *</Label>
+                <Input
+                  id="productName"
+                  type="text"
+                  value={formData.productName}
+                  onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
+                  placeholder="Enter product name"
+                  required
+                />
               </div>
             </div>
 
