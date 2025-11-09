@@ -93,6 +93,8 @@ export async function DELETE(req, context) {
     const params = await context.params;
     const { table, id } = params;
 
+    console.log(`DELETE request - Table: ${table}, ID: ${id}`);
+
     // Validate table name
     const allowedTables = [
       "User",
@@ -114,16 +116,35 @@ export async function DELETE(req, context) {
     }
 
     // Get table model
-    const model = prisma[table.charAt(0).toLowerCase() + table.slice(1)];
+    const modelName = table.charAt(0).toLowerCase() + table.slice(1);
+    const model = prisma[modelName];
+
+    console.log(`Model name: ${modelName}, Model exists: ${!!model}`);
 
     if (!model) {
       return NextResponse.json({ error: "Table not found" }, { status: 404 });
+    }
+
+    // Check if record exists before attempting delete
+    const existingRecord = await model.findUnique({
+      where: { id },
+    });
+
+    console.log(`Record found: ${!!existingRecord}`);
+
+    if (!existingRecord) {
+      return NextResponse.json(
+        { error: "Record not found. It may have been already deleted." },
+        { status: 404 }
+      );
     }
 
     // Delete record
     await model.delete({
       where: { id },
     });
+
+    console.log(`Record deleted successfully - ID: ${id}`);
 
     return NextResponse.json({ message: "Record deleted successfully" });
   } catch (error) {

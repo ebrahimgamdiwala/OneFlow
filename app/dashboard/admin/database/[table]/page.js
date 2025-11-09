@@ -71,6 +71,8 @@ export default function DatabaseTablePage() {
   };
 
   const handleDelete = async (id) => {
+    console.log(`Attempting to delete record with ID: ${id}`);
+    
     if (!confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
       return;
     }
@@ -79,14 +81,23 @@ export default function DatabaseTablePage() {
       // Use the generic database API endpoint with proper table name mapping
       const prismaTableName = getPrismaTableName(tableName);
       const endpoint = `/api/database/${prismaTableName}/${id}`;
+      
+      console.log(`DELETE endpoint: ${endpoint}`);
+      
       const res = await fetch(endpoint, { method: 'DELETE' });
       
       if (res.ok) {
         alert('Record deleted successfully');
         fetchTableData();
       } else {
-        const errorData = await res.json();
-        alert(`Failed to delete record: ${errorData.error || 'Unknown error'}`);
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Delete failed:', errorData);
+        if (res.status === 404) {
+          alert('Record not found. It may have been already deleted. Refreshing...');
+          fetchTableData();
+        } else {
+          alert(`Failed to delete record: ${errorData.error || 'Unknown error'}`);
+        }
       }
     } catch (error) {
       console.error('Error deleting record:', error);
